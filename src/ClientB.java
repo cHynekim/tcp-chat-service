@@ -27,7 +27,13 @@ public class ClientB {
 				os.writeUTF(input);
 				os.flush();
 				
-				if(input.equalsIgnoreCase("exit")) break;
+				if(input.equalsIgnoreCase("exit")) {
+					scanner.close();
+					is.close();
+					os.close();
+					socket.close();
+					break;
+				} 
 			}
 					
 		} catch (IOException e) {

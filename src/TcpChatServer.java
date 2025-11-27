@@ -2,16 +2,17 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.LinkedList;
+import java.util.Vector;
 
 class ClientHdlrThread extends Thread{
 	Socket client;
-	LinkedList<Socket> allClients;
+	Vector<Socket> allClients;
 	
-	public ClientHdlrThread(Socket client, LinkedList<Socket> allClients) {
+	public ClientHdlrThread(Socket client, Vector<Socket> allClients) {
 		this.client = client;
 		this.allClients = allClients;
 	}
@@ -19,28 +20,33 @@ class ClientHdlrThread extends Thread{
 	public void run() {
 		try {
 			DataInputStream is = new DataInputStream(new BufferedInputStream(client.getInputStream()));
+					
 			System.out.println("Client" + client.getPort() + " is listening");
 			while(true) {
 				String msg;
 				if((msg = is.readUTF()) != null && allClients.size() > 1) {
-					System.out.println("triggered");
-					for(Socket socket : allClients) {
-						System.out.println("for");
-						if(socket != this.client) {
-							DataOutputStream os = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
-							os.writeUTF("Clinet" + socket.getPort() + " : " + msg);
-							os.flush();
-							System.out.println("flushed");
+					synchronized(allClients){
+						for(Socket socket : allClients) {
+							if(socket != this.client) {
+								DataOutputStream os = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+								os.writeUTF("Client" + client.getPort() + " : " + msg);
+								os.flush();
+							}
 						}
 					}
+					
 				}
 				else if(allClients.size() == 1) {
 					System.out.println("Waiting for other clients ...");
 				}
 			}			
+		} catch (EOFException e) {
+			System.out.println("Client" + client.getPort() + " disconnect");
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			System.out.println("Client" + client.getPort() + " connection lost");
+		} finally {
+			allClients.remove(client);
+			System.out.println("removed");
 		}
 	}
 }
@@ -48,7 +54,7 @@ class ClientHdlrThread extends Thread{
 public class TcpChatServer {
 	public static void main(String[] args) {
 		
-		final LinkedList<Socket> clientList = new LinkedList<>();
+		final Vector<Socket> clientList = new Vector<>();
 		ServerSocket serverSocket = null;
 		
 		try {

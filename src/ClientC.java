@@ -7,9 +7,9 @@ import java.net.InetAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class ClientA {
+public class ClientC {
 	public static void main(String[] args) {
-		System.out.println("<<Client A>>");
+		System.out.println("<<Client C>>");
 		try {
 			Socket socket = new Socket(InetAddress.getByName("localhost"), 10000);
 			System.out.println("Connected! : " + socket.getInetAddress() + ":" + socket.getPort());
