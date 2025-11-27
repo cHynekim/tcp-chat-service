@@ -17,6 +17,9 @@ public class ClientA {
 			DataInputStream is = new DataInputStream(new BufferedInputStream(socket.getInputStream()));
 			DataOutputStream os = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
 			
+			Thread inputHdlr = new InputHdlr(socket, is);
+			inputHdlr.setDaemon(true);
+			inputHdlr.start();
 			Scanner scanner = new Scanner(System.in);
 			
 			while(true) {
@@ -25,11 +28,7 @@ public class ClientA {
 				os.flush();
 				
 				if(input.equalsIgnoreCase("exit")) break;
-				
-				String msg;
-				if((msg = is.readUTF()) != null) System.out.println(msg);
 			}
-			
 					
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
