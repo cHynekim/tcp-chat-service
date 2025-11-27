@@ -10,25 +10,30 @@ import java.util.Vector;
 
 class ClientHdlrThread extends Thread{
 	Socket client;
-	Vector<Socket> allClients;
+	Vector<DataOutputStream> allOs;
+	DataInputStream is;
+	DataOutputStream os;
 	
-	public ClientHdlrThread(Socket client, Vector<Socket> allClients) {
+	public ClientHdlrThread(Socket client, Vector<DataOutputStream> allOs) {
 		this.client = client;
-		this.allClients = allClients;
+		this.allOs = allOs;
 	}
 
 	public void run() {
 		try {
-			DataInputStream is = new DataInputStream(new BufferedInputStream(client.getInputStream()));
-					
+			is = new DataInputStream(new BufferedInputStream(client.getInputStream()));
+			os = new DataOutputStream(new BufferedOutputStream(client.getOutputStream()));
+			
+			allOs.add(os);
+			
 			System.out.println("Client" + client.getPort() + " is listening");
+			
 			while(true) {
 				String msg;
-				if((msg = is.readUTF()) != null && allClients.size() > 1) {
-					synchronized(allClients){
-						for(Socket socket : allClients) {
-							if(socket != this.client) {
-								DataOutputStream os = new DataOutputStream(new BufferedOutputStream(socket.getOutputStream()));
+				if((msg = is.readUTF()) != null && allOs.size() > 1) {
+					synchronized(allOs){
+						for(DataOutputStream os : allOs) {
+							if(os != this.os) {
 								os.writeUTF("Client" + client.getPort() + " : " + msg);
 								os.flush();
 							}
@@ -36,7 +41,7 @@ class ClientHdlrThread extends Thread{
 					}
 					
 				}
-				else if(allClients.size() == 1) {
+				else if(allOs.size() == 1) {
 					System.out.println("Waiting for other clients ...");
 				}
 			}			
@@ -45,8 +50,15 @@ class ClientHdlrThread extends Thread{
 		} catch (IOException e) {
 			System.out.println("Client" + client.getPort() + " connection lost");
 		} finally {
-			allClients.remove(client);
-			System.out.println("removed");
+			allOs.remove(this.os);
+			try {
+				if(is != null) is.close();
+				if(os != null) os.close();
+				if(client != null) client.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 		}
 	}
 }
@@ -54,7 +66,7 @@ class ClientHdlrThread extends Thread{
 public class TcpChatServer {
 	public static void main(String[] args) {
 		
-		final Vector<Socket> clientList = new Vector<>();
+		final Vector<DataOutputStream> osList = new Vector<>();
 		ServerSocket serverSocket = null;
 		
 		try {
@@ -62,11 +74,11 @@ public class TcpChatServer {
 			serverSocket = new ServerSocket(10000);
 			
 			while(true) {
+				System.out.println("clients : " + Thread.activeCount() + " / " + "AllOutputStream : " + osList.size());
 				System.out.println("Waiting for client ...");
 				Socket socket = serverSocket.accept();
 				System.out.println("Client joined! : " + socket.getInetAddress() + ":" + socket.getPort());
-				clientList.add(socket);
-				Thread client = new ClientHdlrThread(socket, clientList);
+				Thread client = new ClientHdlrThread(socket, osList);
 				client.start();
 			}
 				
